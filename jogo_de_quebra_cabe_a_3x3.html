@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaPuzzle 3x3 - Desafio de Quebra-Cabeça</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .heading-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphism styling */
+        .glass-card {
+            background: rgba(23, 32, 51, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-subtle {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Grid sizing strictly 3x3 */
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 3px;
+        }
+
+        /* Puzzle piece styling */
+        .puzzle-slot {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            background-size: 300% 300%;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+            border-radius: 8px;
+        }
+
+        .puzzle-slot:hover {
+            transform: scale(0.97);
+        }
+
+        .puzzle-slot.selected {
+            border: 3px solid #6366f1 !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+            z-index: 10;
+        }
+
+        .puzzle-slot.drag-over {
+            border: 3px dashed #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.35s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Touch dragging ghost item */
+        #touch-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.85;
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            border-radius: 8px;
+            border: 2px solid #6366f1;
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6 bg-slate-950 text-slate-100">
+
+    <!-- Header -->
+    <header class="w-full max-w-xl flex items-center justify-between mb-3 pt-1">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-emerald-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-puzzle-piece text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="heading-font text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">
+                    ChromaPuzzle 3x3
+                </h1>
+                <p class="text-xs text-slate-400">Desafio de Memória & Agilidade (9 Peças)</p>
+            </div>
+        </div>
+
+        <button id="btn-sound" onclick="toggleSound()" class="px-3 py-2 rounded-xl glass-subtle text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 text-sm">
+            <i id="sound-icon" class="fa-solid fa-volume-high text-indigo-400"></i>
+            <span class="hidden sm:inline">Som</span>
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <main class="w-full max-w-xl flex-1 flex flex-col justify-center items-center my-auto relative">
+
+        <!-- 1. TELA INICIAL -->
+        <div id="screen-start" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center fade-in">
+            <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center relative overflow-hidden">
+                <i class="fa-solid fa-border-all text-4xl text-indigo-400"></i>
+            </div>
+
+            <h2 class="heading-font text-2xl sm:text-3xl font-bold mb-3">Monte o Quebra-Cabeça!</h2>
+            <p class="text-slate-300 text-sm sm:text-base mb-6 leading-relaxed max-w-md mx-auto">
+                Você terá <span class="text-indigo-400 font-bold">5 segundos</span> para memorizar a imagem completa. Em seguida, terá <span class="text-amber-400 font-bold">20 segundos</span> para juntar as <span class="text-emerald-400 font-bold">9 peças</span>!
+            </p>
+
+            <div class="space-y-3">
+                <button onclick="startGame()" class="w-full py-4 px-8 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold text-lg shadow-lg shadow-indigo-600/30 hover:scale-[1.01] active:scale-[0.99] transition duration-200 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Começar Jogo</span>
+                </button>
+            </div>
+
+            <div class="mt-6 pt-5 border-t border-slate-800/80 flex items-center justify-center text-xs text-slate-400 gap-2">
+                <i class="fa-solid fa-hand-pointer text-indigo-400"></i>
+                <span>Arraste e solte ou clique em duas peças para trocá-las.</span>
+            </div>
+        </div>
+
+        <!-- 2. TELA DE VISUALIZAÇÃO (MEMORIZAÇÃO - 5s) -->
+        <div id="screen-memorize" class="w-full glass-card rounded-3xl p-5 sm:p-6 text-center hidden fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                    Fase 1: Memorize a Imagem
+                </span>
+                <div class="flex items-center gap-2 font-mono text-xl font-bold text-indigo-300">
+                    <i class="fa-regular fa-clock text-indigo-400"></i>
+                    <span id="memorize-timer">5.0</span>s
+                </div>
+            </div>
+
+            <!-- Previsualização de Imagem Inteira -->
+            <div class="w-full flex justify-center mb-4">
+                <div class="relative w-[300px] h-[300px] sm:w-[390px] sm:h-[390px] rounded-2xl overflow-hidden border-2 border-indigo-500/30 shadow-2xl bg-slate-900">
+                    <img id="preview-image" src="" alt="Imagem do Desafio" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent"></div>
+                </div>
+            </div>
+
+            <!-- Barra de Progresso Tempo -->
+            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                <div id="memorize-progress" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full rounded-full transition-all duration-100 ease-linear" style="width: 100%;"></div>
+            </div>
+        </div>
+
+        <!-- 3. TELA DE MONTAGEM (20s) -->
+        <div id="screen-gameplay" class="w-full glass-card rounded-3xl p-4 sm:p-6 text-center hidden fade-in">
+            <!-- Header do Jogo -->
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleHint()" id="btn-hint" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                        <span>Dica de Fundo</span>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2 font-mono text-xl font-bold text-amber-400">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="gameplay-timer">20.0</span>s
+                </div>
+            </div>
+
+            <!-- Tabuleiro Grid 3x3 -->
+            <div class="w-full flex justify-center my-2">
+                <div id="puzzle-board" class="puzzle-grid w-[300px] h-[300px] sm:w-[390px] sm:h-[390px] p-1.5 bg-slate-900/90 rounded-2xl border border-slate-700/60 shadow-2xl relative overflow-hidden">
+                    <!-- Fundo de Dica Opaco -->
+                    <div id="hint-background" class="absolute inset-1.5 bg-cover bg-center rounded-xl opacity-0 pointer-events-none transition-opacity duration-300" style="filter: brightness(0.4) contrast(0.8);"></div>
+                    <!-- 9 Peças inseridas via JS -->
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 mt-2">
+                Clique ou arraste duas peças para trocar suas posições.
+            </p>
+        </div>
+
+        <!-- 4. TELA DE RESULTADO -->
+        <div id="screen-result" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center hidden fade-in">
+            <div id="result-icon-bg" class="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+                🏆
+            </div>
+
+            <h3 id="result-title" class="heading-font text-2xl sm:text-3xl font-bold mb-1">Resultado</h3>
+            <p id="result-subtitle" class="text-slate-300 text-sm mb-5">Sua pontuação final</p>
+
+            <!-- Estatísticas -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                    <div class="text-xs uppercase text-slate-400 font-medium mb-1">Peças Corretas</div>
+                    <div class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
+                        <span id="correct-count">0</span><span class="text-slate-500 text-lg">/9</span>
+                    </div>
+                </div>
+                <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                    <div class="text-xs uppercase text-slate-400 font-medium mb-1">Pontuação</div>
+                    <div id="final-score" class="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                        0
+                    </div>
+                </div>
+            </div>
+
+            <!-- Imagem Miniatura -->
+            <div class="mb-6 flex flex-col items-center">
+                <span class="text-xs text-slate-400 mb-2">Imagem Original:</span>
+                <img id="result-preview-img" src="" alt="Thumbnail" class="w-24 h-24 rounded-xl object-cover border border-slate-700 shadow-md">
+            </div>
+
+            <button onclick="startGame()" class="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 text-white font-bold text-base shadow-lg shadow-indigo-600/30 hover:scale-[1.01] active:scale-[0.99] transition duration-200 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>Jogar Novamente</span>
+            </button>
+        </div>
+
+    </main>
+
+    <div id="touch-ghost"></div>
+
+    <footer class="w-full max-w-xl text-center text-xs text-slate-500 pt-3 border-t border-slate-800/50 mt-2">
+        ChromaPuzzle &copy; Quebra-Cabeça 3x3
+    </footer>
+
+    <script>
+        // CONFIGURAÇÃO DO JOGO 3x3
+        const CONFIG = {
+            memorizeTime: 5.0,  // 5s de memorização
+            gameplayTime: 20.0, // 20s para montagem
+            gridSize: 3,        // Grid 3x3
+            totalPieces: 9      // Exatamente 9 peças
+        };
+
+        const IMAGE_POOL = [
+            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1506744038136-46273834b3fb?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop'
+        ];
+
+        let currentImageUrl = '';
+        let currentPieces = []; // Lista da ordem atual [0..8]
+        let selectedIndex = null;
+        let timerInterval = null;
+        let soundEnabled = true;
+        let hintActive = false;
+
+        let touchStartIdx = null;
+        let touchActive = false;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'swap') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'tick') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(700, now);
+                    gain.gain.setValueAtTime(0.04, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'win') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    osc.frequency.setValueAtTime(1046.50, now + 0.3);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.3);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                }
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high text-indigo-400' : 'fa-solid fa-volume-xmark text-slate-500';
+        }
+
+        function showScreen(screenId) {
+            ['screen-start', 'screen-memorize', 'screen-gameplay', 'screen-result'].forEach(id => {
+                document.getElementById(id).classList.toggle('hidden', id !== screenId);
+            });
+        }
+
+        function startGame() {
+            initAudio();
+            playSound('swap');
+            selectedIndex = null;
+            hintActive = false;
+            document.getElementById('hint-background').style.opacity = '0';
+
+            currentImageUrl = IMAGE_POOL[Math.floor(Math.random() * IMAGE_POOL.length)];
+            
+            const previewImg = document.getElementById('preview-image');
+            previewImg.src = currentImageUrl;
+
+            showScreen('screen-memorize');
+
+            let timeLeft = CONFIG.memorizeTime;
+            const timerEl = document.getElementById('memorize-timer');
+            const progressBar = document.getElementById('memorize-progress');
+            
+            timerEl.innerText = timeLeft.toFixed(1);
+            progressBar.style.width = '100%';
+
+            const startTime = Date.now();
+            const durationMs = CONFIG.memorizeTime * 1000;
+            let lastSec = Math.ceil(timeLeft);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, durationMs - elapsed);
+                const currentSec = remaining / 1000;
+
+                timerEl.innerText = currentSec.toFixed(1);
+                progressBar.style.width = `${(remaining / durationMs) * 100}%`;
+
+                if (Math.ceil(currentSec) < lastSec && Math.ceil(currentSec) > 0) {
+                    lastSec = Math.ceil(currentSec);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    startGameplayPhase();
+                }
+            }, 50);
+        }
+
+        function startGameplayPhase() {
+            // Embaralha estritamente 9 peças (0 a 8)
+            do {
+                currentPieces = Array.from({ length: CONFIG.totalPieces }, (_, i) => i).sort(() => Math.random() - 0.5);
+            } while (checkWinCondition());
+
+            document.getElementById('hint-background').style.backgroundImage = `url('${currentImageUrl}')`;
+
+            renderBoard();
+            showScreen('screen-gameplay');
+
+            let timeLeft = CONFIG.gameplayTime;
+            const timerEl = document.getElementById('gameplay-timer');
+            timerEl.innerText = timeLeft.toFixed(1);
+
+            const startTime = Date.now();
+            const durationMs = CONFIG.gameplayTime * 1000;
+            let lastSec = Math.ceil(timeLeft);
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const remaining = Math.max(0, durationMs - elapsed);
+                const currentSec = remaining / 1000;
+
+                timerEl.innerText = currentSec.toFixed(1);
+
+                if (Math.ceil(currentSec) < lastSec && Math.ceil(currentSec) > 0) {
+                    lastSec = Math.ceil(currentSec);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearInterval(timerInterval);
+                    endGame(currentSec);
+                }
+            }, 50);
+        }
+
+        // Renderiza exatamente 9 peças em um layout 3x3
+        function renderBoard() {
+            const board = document.getElementById('puzzle-board');
+            
+            const hintBg = document.getElementById('hint-background');
+            board.innerHTML = '';
+            board.appendChild(hintBg);
+
+            currentPieces.forEach((pieceId, slotIndex) => {
+                const slot = document.createElement('div');
+                slot.className = 'puzzle-slot';
+                slot.dataset.index = slotIndex;
+                slot.draggable = true;
+
+                // Coluna (0, 1, 2) e Linha (0, 1, 2) para 3x3
+                const col = pieceId % CONFIG.gridSize;
+                const row = Math.floor(pieceId / CONFIG.gridSize);
+
+                slot.style.backgroundImage = `url('${currentImageUrl}')`;
+                
+                // Mapeamento preciso para grid 3x3: colunas/linhas em 0%, 50%, 100%
+                const posX = (col / (CONFIG.gridSize - 1)) * 100;
+                const posY = (row / (CONFIG.gridSize - 1)) * 100;
+                slot.style.backgroundPosition = `${posX}% ${posY}%`;
+
+                if (selectedIndex === slotIndex) {
+                    slot.classList.add('selected');
+                }
+
+                // Eventos
+                slot.addEventListener('click', () => handlePieceClick(slotIndex));
+                slot.addEventListener('dragstart', (e) => handleDragStart(e, slotIndex));
+                slot.addEventListener('dragover', (e) => handleDragOver(e));
+                slot.addEventListener('dragleave', (e) => handleDragLeave(e));
+                slot.addEventListener('drop', (e) => handleDrop(e, slotIndex));
+
+                slot.addEventListener('touchstart', (e) => handleTouchStart(e, slotIndex), { passive: false });
+                slot.addEventListener('touchmove', handleTouchMove, { passive: false });
+                slot.addEventListener('touchend', (e) => handleTouchEnd(e, slotIndex));
+
+                board.appendChild(slot);
+            });
+        }
+
+        function toggleHint() {
+            hintActive = !hintActive;
+            const hintBg = document.getElementById('hint-background');
+            hintBg.style.opacity = hintActive ? '0.35' : '0';
+        }
+
+        function swapPieces(idx1, idx2) {
+            if (idx1 === idx2 || idx1 === null || idx2 === null) return;
+
+            const temp = currentPieces[idx1];
+            currentPieces[idx1] = currentPieces[idx2];
+            currentPieces[idx2] = temp;
+
+            selectedIndex = null;
+            playSound('swap');
+            renderBoard();
+
+            if (checkWinCondition()) {
+                const timerEl = document.getElementById('gameplay-timer');
+                const remainingTime = parseFloat(timerEl.innerText) || 0;
+                clearInterval(timerInterval);
+                setTimeout(() => endGame(remainingTime), 200);
+            }
+        }
+
+        function handlePieceClick(index) {
+            if (selectedIndex === null) {
+                selectedIndex = index;
+                renderBoard();
+            } else if (selectedIndex === index) {
+                selectedIndex = null;
+                renderBoard();
+            } else {
+                swapPieces(selectedIndex, index);
+            }
+        }
+
+        // Drag and drop desktop
+        let draggedIndex = null;
+
+        function handleDragStart(e, index) {
+            draggedIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.target.style.opacity = '0.5';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetIndex) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (draggedIndex !== null) {
+                swapPieces(draggedIndex, targetIndex);
+                draggedIndex = null;
+            }
+        }
+
+        // Gestos Touch Mobile
+        function handleTouchStart(e, index) {
+            touchStartIdx = index;
+            touchActive = true;
+            const touch = e.touches[0];
+
+            const ghost = document.getElementById('touch-ghost');
+            const slot = e.currentTarget;
+            
+            ghost.style.width = slot.offsetWidth + 'px';
+            ghost.style.height = slot.offsetHeight + 'px';
+            ghost.style.backgroundImage = slot.style.backgroundImage;
+            ghost.style.backgroundSize = slot.style.backgroundSize;
+            ghost.style.backgroundPosition = slot.style.backgroundPosition;
+            ghost.style.left = touch.clientX + 'px';
+            ghost.style.top = touch.clientY + 'px';
+            ghost.style.display = 'block';
+        }
+
+        function handleTouchMove(e) {
+            if (!touchActive) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+
+            const ghost = document.getElementById('touch-ghost');
+            ghost.style.left = touch.clientX + 'px';
+            ghost.style.top = touch.clientY + 'px';
+        }
+
+        function handleTouchEnd(e, index) {
+            if (!touchActive) return;
+            touchActive = false;
+
+            const ghost = document.getElementById('touch-ghost');
+            ghost.style.display = 'none';
+
+            const touch = e.changedTouches[0];
+            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (targetEl && targetEl.closest('.puzzle-slot')) {
+                const targetSlot = targetEl.closest('.puzzle-slot');
+                const targetIdx = parseInt(targetSlot.dataset.index);
+                if (!isNaN(targetIdx)) {
+                    swapPieces(touchStartIdx, targetIdx);
+                }
+            }
+            touchStartIdx = null;
+        }
+
+        function checkWinCondition() {
+            return currentPieces.every((pieceId, index) => pieceId === index);
+        }
+
+        function calculateCorrectPieces() {
+            let correct = 0;
+            currentPieces.forEach((pieceId, index) => {
+                if (pieceId === index) correct++;
+            });
+            return correct;
+        }
+
+        function endGame(remainingSeconds) {
+            const correctCount = calculateCorrectPieces();
+            const isFullWin = correctCount === CONFIG.totalPieces;
+
+            // Pontuação: (Peças * 150) + Bônus de Tempo
+            const timeBonus = Math.round(remainingSeconds * 50);
+            const score = (correctCount * 150) + (isFullWin ? timeBonus : 0);
+
+            if (isFullWin) {
+                playSound('win');
+            } else {
+                playSound('lose');
+            }
+
+            document.getElementById('correct-count').innerText = correctCount;
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('result-preview-img').src = currentImageUrl;
+
+            const iconBg = document.getElementById('result-icon-bg');
+            const title = document.getElementById('result-title');
+            const subtitle = document.getElementById('result-subtitle');
+
+            if (isFullWin) {
+                iconBg.innerText = "🏆";
+                iconBg.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                title.innerText = "Perfeito!";
+                subtitle.innerText = `Você montou o quebra-cabeça 3x3 com ${remainingSeconds.toFixed(1)}s restantes!`;
+            } else if (correctCount >= 6) {
+                iconBg.innerText = "⚡";
+                iconBg.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                title.innerText = "Muito Perto!";
+                subtitle.innerText = "O tempo acabou, mas você encaixou a maioria das 9 peças.";
+            } else {
+                iconBg.innerText = "🧩";
+                iconBg.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-slate-800 text-slate-300 border border-slate-700";
+                title.innerText = "Tempo Esgotado!";
+                subtitle.innerText = "Tente novamente para agilizar sua montagem.";
+            }
+
+            showScreen('screen-result');
+        }
+    </script>
+</body>
+</html>
