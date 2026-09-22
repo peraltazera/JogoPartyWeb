@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Mind Games - Central de Minigames</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .heading-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphism containers */
+        .glass-card {
+            background: rgba(23, 32, 51, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-subtle {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .game-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .game-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 20px 30px -10px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Puzzle Grid 3x3 */
+        .puzzle-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
+        }
+
+        .puzzle-slot {
+            aspect-ratio: 1 / 1;
+            position: relative;
+            background-size: 300% 300%;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+            border-radius: 6px;
+        }
+
+        .puzzle-slot:hover {
+            transform: scale(0.97);
+        }
+
+        .puzzle-slot.selected {
+            border: 3px solid #6366f1 !important;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.8);
+            z-index: 10;
+        }
+
+        .puzzle-slot.drag-over {
+            border: 3px dashed #10b981 !important;
+            background-color: rgba(16, 185, 129, 0.2);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Touch ghost element for dragging on mobile */
+        #touch-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.85;
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            border-radius: 8px;
+            border: 2px solid #6366f1;
+            display: none;
+        }
+
+        /* Custom color slider thumb styling */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            border: 2px solid #6366f1;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            border: 2px solid #6366f1;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between items-center p-3 sm:p-6 text-slate-100">
+
+    <!-- Header -->
+    <header class="w-full max-w-2xl flex items-center justify-between mb-4 pt-1">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="showHub()">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <i class="fa-solid fa-gamepad text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="heading-font text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-300">
+                    Mind Games Hub
+                </h1>
+                <p class="text-xs text-slate-400">Desafios de Memória e Agilidade</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="btn-back-hub" onclick="showHub()" class="hidden px-3 py-2 rounded-xl glass-subtle text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 text-xs sm:text-sm">
+                <i class="fa-solid fa-house text-indigo-400"></i>
+                <span class="hidden sm:inline">Menu Principal</span>
+            </button>
+            <button id="btn-sound" onclick="toggleSound()" class="px-3 py-2 rounded-xl glass-subtle text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2 text-xs sm:text-sm">
+                <i id="sound-icon" class="fa-solid fa-volume-high text-indigo-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="w-full max-w-2xl flex-1 flex flex-col justify-center items-center my-auto relative">
+
+        <!-- ========================================== -->
+        <!-- 0. HUB / TELA DE SELEÇÃO DE JOGOS         -->
+        <!-- ========================================== -->
+        <div id="view-hub" class="w-full fade-in">
+            <div class="text-center mb-8">
+                <h2 class="heading-font text-3xl sm:text-4xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-purple-200 to-pink-300">
+                    Escolha seu Desafio
+                </h2>
+                <p class="text-slate-400 text-sm max-w-md mx-auto">
+                    Teste sua memória fotográfica de cores ou sua agilidade espacial montando quebra-cabeças!
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                <!-- Card Jogo 1: Memória de Cores -->
+                <div onclick="openGame('color')" class="game-card glass-card rounded-3xl p-6 cursor-pointer flex flex-col justify-between group">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white text-2xl shadow-lg shadow-pink-500/25 group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-palette"></i>
+                            </div>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300">
+                                Memória
+                            </span>
+                        </div>
+                        <h3 class="heading-font text-xl font-bold text-white mb-2 group-hover:text-pink-300 transition-colors">
+                            Memória de Cores
+                        </h3>
+                        <p class="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+                            Memorize a cor mostrada durante <span class="text-slate-200 font-semibold">5 segundos</span> e recrie-a com os seletores em <span class="text-slate-200 font-semibold">10 segundos</span>.
+                        </p>
+                    </div>
+                    <div class="flex items-center justify-between text-xs font-semibold text-pink-400 pt-4 border-t border-slate-800">
+                        <span>Iniciar Jogo</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+
+                <!-- Card Jogo 2: Quebra-Cabeça 3x3 -->
+                <div onclick="openGame('puzzle')" class="game-card glass-card rounded-3xl p-6 cursor-pointer flex flex-col justify-between group">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-emerald-500 flex items-center justify-center text-white text-2xl shadow-lg shadow-indigo-500/25 group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-puzzle-piece"></i>
+                            </div>
+                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
+                                Agilidade
+                            </span>
+                        </div>
+                        <h3 class="heading-font text-xl font-bold text-white mb-2 group-hover:text-emerald-300 transition-colors">
+                            Quebra-Cabeça 3x3
+                        </h3>
+                        <p class="text-slate-400 text-xs sm:text-sm leading-relaxed mb-6">
+                            Visualize a imagem por <span class="text-slate-200 font-semibold">5 segundos</span> e monte as <span class="text-slate-200 font-semibold">9 peças</span> no lugar certo em <span class="text-slate-200 font-semibold">20 segundos</span>.
+                        </p>
+                    </div>
+                    <div class="flex items-center justify-between text-xs font-semibold text-emerald-400 pt-4 border-t border-slate-800">
+                        <span>Iniciar Jogo</span>
+                        <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 1. JOGO 1: TELA DE MEMÓRIA DE CORES        -->
+        <!-- ========================================== -->
+        <div id="view-color-game" class="w-full hidden">
+            <!-- Start Screen -->
+            <div id="color-start" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center fade-in">
+                <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 text-3xl">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+                <h2 class="heading-font text-2xl sm:text-3xl font-bold mb-3">Desafio Memória de Cores</h2>
+                <p class="text-slate-300 text-sm mb-6 max-w-md mx-auto leading-relaxed">
+                    Você verá uma cor misteriosa por <span class="text-pink-400 font-bold">5 segundos</span>. Depois, terá <span class="text-indigo-400 font-bold">10 segundos</span> para ajustar os sliders RGB até chegar o mais próximo possível!
+                </p>
+                <button onclick="startColorGame()" class="w-full py-4 rounded-xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 font-bold text-lg shadow-lg shadow-pink-600/25 transition">
+                    Começar Desafio
+                </button>
+            </div>
+
+            <!-- Preview Phase Screen (5s) -->
+            <div id="color-preview" class="w-full glass-card rounded-3xl p-6 text-center hidden fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-pink-400 bg-pink-500/10 px-3 py-1 rounded-full border border-pink-500/20">
+                        Memorize a Cor
+                    </span>
+                    <div class="font-mono text-xl font-bold text-pink-300">
+                        <span id="color-preview-timer">5.0</span>s
+                    </div>
+                </div>
+                <div id="target-color-box" class="w-full h-64 sm:h-72 rounded-2xl shadow-2xl mb-4 border border-white/10 transition-all"></div>
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="color-preview-bar" class="bg-gradient-to-r from-pink-500 to-purple-500 h-full w-full transition-all duration-100"></div>
+                </div>
+            </div>
+
+            <!-- Selection Phase Screen (10s) -->
+            <div id="color-select" class="w-full glass-card rounded-3xl p-6 text-center hidden fade-in">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                        Recrie a Cor
+                    </span>
+                    <div class="font-mono text-xl font-bold text-amber-400">
+                        <span id="color-select-timer">10.0</span>s
+                    </div>
+                </div>
+
+                <!-- Preview da cor selecionada pelo usuário -->
+                <div id="user-color-preview" class="w-full h-36 sm:h-44 rounded-2xl shadow-inner mb-5 border border-white/10 transition-all flex items-center justify-center">
+                    <span id="user-hex-code" class="bg-black/40 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-widest text-white border border-white/10">
+                        #000000
+                    </span>
+                </div>
+
+                <!-- Sliders RGB -->
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-red-400">Vermelho (R)</span>
+                            <span id="val-r" class="font-mono">128</span>
+                        </div>
+                        <input type="range" id="slider-r" min="0" max="255" value="128" oninput="updateUserColor()" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-green-400">Verde (G)</span>
+                            <span id="val-g" class="font-mono">128</span>
+                        </div>
+                        <input type="range" id="slider-g" min="0" max="255" value="128" oninput="updateUserColor()" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-blue-400">Azul (B)</span>
+                            <span id="val-b" class="font-mono">128</span>
+                        </div>
+                        <input type="range" id="slider-b" min="0" max="255" value="128" oninput="updateUserColor()" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <button onclick="submitColorChoice()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 font-bold text-sm shadow-lg shadow-indigo-600/25 transition">
+                    Confirmar Seleção
+                </button>
+            </div>
+
+            <!-- Result Screen -->
+            <div id="color-result" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center hidden fade-in">
+                <div id="color-score-badge" class="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+                    🎨
+                </div>
+                <h3 id="color-result-title" class="heading-font text-2xl font-bold mb-1">Resultado</h3>
+                <p id="color-result-subtitle" class="text-slate-400 text-xs mb-6">Comparação de precisão</p>
+
+                <!-- Comparativo de Cores Lado a Lado -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-slate-400 mb-1.5 font-medium">Cor Original</span>
+                        <div id="result-target-box" class="w-full h-24 rounded-xl border border-white/10 shadow-md"></div>
+                        <span id="result-target-hex" class="text-xs font-mono text-slate-300 mt-2">#000000</span>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <span class="text-xs text-slate-400 mb-1.5 font-medium">Sua Escolha</span>
+                        <div id="result-user-box" class="w-full h-24 rounded-xl border border-white/10 shadow-md"></div>
+                        <span id="result-user-hex" class="text-xs font-mono text-slate-300 mt-2">#000000</span>
+                    </div>
+                </div>
+
+                <!-- Placar de Precisão -->
+                <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 mb-6">
+                    <div class="text-xs uppercase text-slate-400 font-medium mb-1">Precisão da Cor</div>
+                    <div id="color-accuracy-score" class="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">
+                        0%
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="startColorGame()" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-pink-600 to-indigo-600 font-bold text-sm shadow-lg shadow-pink-600/25">
+                        Tentar Novamente
+                    </button>
+                    <button onclick="showHub()" class="py-3.5 px-6 rounded-xl glass-subtle hover:bg-slate-800 font-semibold text-sm text-slate-300">
+                        Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 2. JOGO 2: TELA DE QUEBRA-CABEÇA 3X3        -->
+        <!-- ========================================== -->
+        <div id="view-puzzle-game" class="w-full hidden">
+            <!-- Start Screen -->
+            <div id="puzzle-start" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center fade-in">
+                <div class="w-20 h-20 mx-auto mb-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-3xl">
+                    <i class="fa-solid fa-border-all"></i>
+                </div>
+                <h2 class="heading-font text-2xl sm:text-3xl font-bold mb-3">Quebra-Cabeça 3x3</h2>
+                <p class="text-slate-300 text-sm mb-6 max-w-md mx-auto leading-relaxed">
+                    Memorize a imagem completa em <span class="text-indigo-400 font-bold">5 segundos</span>. Depois, monte as <span class="text-emerald-400 font-bold">9 peças</span> arrastando ou tocando nelas em até <span class="text-amber-400 font-bold">20 segundos</span>!
+                </p>
+                <button onclick="startPuzzleGame()" class="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 hover:from-indigo-500 hover:to-emerald-500 font-bold text-lg shadow-lg shadow-indigo-600/25 transition">
+                    Começar Quebra-Cabeça
+                </button>
+            </div>
+
+            <!-- Preview Phase Screen (5s) -->
+            <div id="puzzle-preview" class="w-full glass-card rounded-3xl p-5 text-center hidden fade-in">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                        Memorize a Imagem
+                    </span>
+                    <div class="font-mono text-xl font-bold text-indigo-300">
+                        <span id="puzzle-preview-timer">5.0</span>s
+                    </div>
+                </div>
+
+                <div class="w-full flex justify-center mb-3">
+                    <div class="relative w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] rounded-2xl overflow-hidden border-2 border-indigo-500/30 shadow-2xl bg-slate-900">
+                        <img id="puzzle-preview-img" src="" alt="Preview" class="w-full h-full object-cover">
+                    </div>
+                </div>
+
+                <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                    <div id="puzzle-preview-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-full transition-all duration-100"></div>
+                </div>
+            </div>
+
+            <!-- Gameplay Screen (20s) -->
+            <div id="puzzle-gameplay" class="w-full glass-card rounded-3xl p-4 sm:p-6 text-center hidden fade-in">
+                <div class="flex items-center justify-between mb-2">
+                    <button onclick="togglePuzzleHint()" id="btn-puzzle-hint" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                        <span>Dica</span>
+                    </button>
+                    <div class="font-mono text-xl font-bold text-amber-400">
+                        <span id="puzzle-gameplay-timer">20.0</span>s
+                    </div>
+                </div>
+
+                <!-- Grid 3x3 Tabuleiro -->
+                <div class="w-full flex justify-center my-2">
+                    <div id="puzzle-board" class="puzzle-grid w-[280px] h-[280px] sm:w-[360px] sm:h-[360px] p-1 bg-slate-900/90 rounded-2xl border border-slate-700/60 shadow-2xl relative overflow-hidden">
+                        <!-- Imagem Dica Opaca de Fundo -->
+                        <div id="puzzle-hint-bg" class="absolute inset-1 bg-cover bg-center rounded-xl opacity-0 pointer-events-none transition-opacity duration-300" style="filter: brightness(0.4) contrast(0.8);"></div>
+                    </div>
+                </div>
+
+                <p class="text-xs text-slate-400 mt-2">
+                    Clique em duas peças para trocar ou arraste uma sobre a outra.
+                </p>
+            </div>
+
+            <!-- Result Screen -->
+            <div id="puzzle-result" class="w-full glass-card rounded-3xl p-6 sm:p-8 text-center hidden fade-in">
+                <div id="puzzle-result-badge" class="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg">
+                    🏆
+                </div>
+                <h3 id="puzzle-result-title" class="heading-font text-2xl font-bold mb-1">Resultado</h3>
+                <p id="puzzle-result-subtitle" class="text-slate-400 text-xs mb-5">Desempenho da montagem</p>
+
+                <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                        <div class="text-xs uppercase text-slate-400 font-medium mb-1">Peças Certas</div>
+                        <div class="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">
+                            <span id="puzzle-correct-count">0</span><span class="text-slate-500 text-base">/9</span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900/80 p-3.5 rounded-2xl border border-slate-800">
+                        <div class="text-xs uppercase text-slate-400 font-medium mb-1">Pontuação</div>
+                        <div id="puzzle-final-score" class="text-2xl sm:text-3xl font-black text-amber-400 font-mono">
+                            0
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-5 flex flex-col items-center">
+                    <span class="text-xs text-slate-400 mb-1.5">Imagem Original:</span>
+                    <img id="puzzle-result-img" src="" alt="Original" class="w-20 h-20 rounded-xl object-cover border border-slate-700 shadow-md">
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="startPuzzleGame()" class="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-emerald-600 font-bold text-sm shadow-lg shadow-indigo-600/25">
+                        Jogar Novamente
+                    </button>
+                    <button onclick="showHub()" class="py-3.5 px-6 rounded-xl glass-subtle hover:bg-slate-800 font-semibold text-sm text-slate-300">
+                        Menu
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Elemento para arraste no touch mobile -->
+    <div id="touch-ghost"></div>
+
+    <footer class="w-full max-w-2xl text-center text-xs text-slate-500 pt-4 border-t border-slate-800/50 mt-4">
+        Arcade Mind Games &copy; 2026 - Minigames de Memória & Raciocínio
+    </footer>
+
+    <script>
+        // ==========================================
+        // ÁUDIO - WEB AUDIO API
+        // ==========================================
+        let soundEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'click') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(500, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'tick') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(700, now);
+                    gain.gain.setValueAtTime(0.04, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'swap') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'win') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now);
+                    osc.frequency.setValueAtTime(659.25, now + 0.1);
+                    osc.frequency.setValueAtTime(783.99, now + 0.2);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                } else if (type === 'lose') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(300, now);
+                    osc.frequency.linearRampToValueAtTime(150, now + 0.25);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                }
+            } catch (e) {
+                console.log("Audio Error:", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('sound-icon');
+            icon.className = soundEnabled ? 'fa-solid fa-volume-high text-indigo-400' : 'fa-solid fa-volume-xmark text-slate-500';
+        }
+
+        // ==========================================
+        // NAVEGAÇÃO DE TELAS DA CENTRAL
+        // ==========================================
+        let currentGame = null; // 'color' ou 'puzzle'
+        let activeInterval = null;
+
+        function clearGlobalInterval() {
+            if (activeInterval) {
+                clearInterval(activeInterval);
+                activeInterval = null;
+            }
+        }
+
+        function showHub() {
+            clearGlobalInterval();
+            playSound('click');
+            currentGame = null;
+
+            document.getElementById('view-hub').classList.remove('hidden');
+            document.getElementById('view-color-game').classList.add('hidden');
+            document.getElementById('view-puzzle-game').classList.add('hidden');
+            document.getElementById('btn-back-hub').classList.add('hidden');
+        }
+
+        function openGame(gameType) {
+            clearGlobalInterval();
+            playSound('click');
+            currentGame = gameType;
+
+            document.getElementById('view-hub').classList.add('hidden');
+            document.getElementById('btn-back-hub').classList.remove('hidden');
+
+            if (gameType === 'color') {
+                document.getElementById('view-color-game').classList.remove('hidden');
+                document.getElementById('view-puzzle-game').classList.add('hidden');
+                showSubScreen('color', 'color-start');
+            } else if (gameType === 'puzzle') {
+                document.getElementById('view-color-game').classList.add('hidden');
+                document.getElementById('view-puzzle-game').classList.remove('hidden');
+                showSubScreen('puzzle', 'puzzle-start');
+            }
+        }
+
+        function showSubScreen(gameGroup, targetId) {
+            const prefix = gameGroup === 'color' ? 'color-' : 'puzzle-';
+            const screens = ['start', 'preview', 'select', 'gameplay', 'result'];
+            
+            screens.forEach(s => {
+                const el = document.getElementById(prefix + s);
+                if (el) {
+                    if (prefix + s === targetId) {
+                        el.classList.remove('hidden');
+                    } else {
+                        el.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // JOGO 1: LÓGICA MEMÓRIA DE CORES
+        // ==========================================
+        let targetRGB = { r: 0, g: 0, b: 0 };
+        let userRGB = { r: 128, g: 128, b: 128 };
+
+        function startColorGame() {
+            initAudio();
+            clearGlobalInterval();
+            playSound('swap');
+
+            // Gerar cor aleatória vívida
+            targetRGB = {
+                r: Math.floor(Math.random() * 256),
+                g: Math.floor(Math.random() * 256),
+                b: Math.floor(Math.random() * 256)
+            };
+
+            const targetBox = document.getElementById('target-color-box');
+            targetBox.style.backgroundColor = `rgb(${targetRGB.r}, ${targetRGB.g}, ${targetRGB.b})`;
+
+            showSubScreen('color', 'color-preview');
+
+            // Timer de 5 Segundos de Memorização
+            let duration = 5.0;
+            const timerEl = document.getElementById('color-preview-timer');
+            const barEl = document.getElementById('color-preview-bar');
+            
+            const startTime = Date.now();
+            let lastSec = 5;
+
+            activeInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const remaining = Math.max(0, duration - elapsed);
+
+                timerEl.innerText = remaining.toFixed(1);
+                barEl.style.width = `${(remaining / duration) * 100}%`;
+
+                if (Math.ceil(remaining) < lastSec && Math.ceil(remaining) > 0) {
+                    lastSec = Math.ceil(remaining);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearGlobalInterval();
+                    startColorSelectPhase();
+                }
+            }, 50);
+        }
+
+        function startColorSelectPhase() {
+            // Resetar sliders para centro (128)
+            userRGB = { r: 128, g: 128, b: 128 };
+            document.getElementById('slider-r').value = 128;
+            document.getElementById('slider-g').value = 128;
+            document.getElementById('slider-b').value = 128;
+            updateUserColor();
+
+            showSubScreen('color', 'color-select');
+
+            // Timer de 10 Segundos para Escolha
+            let duration = 10.0;
+            const timerEl = document.getElementById('color-select-timer');
+            const startTime = Date.now();
+            let lastSec = 10;
+
+            activeInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const remaining = Math.max(0, duration - elapsed);
+
+                timerEl.innerText = remaining.toFixed(1);
+
+                if (Math.ceil(remaining) < lastSec && Math.ceil(remaining) > 0) {
+                    lastSec = Math.ceil(remaining);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearGlobalInterval();
+                    submitColorChoice();
+                }
+            }, 50);
+        }
+
+        function updateUserColor() {
+            userRGB.r = parseInt(document.getElementById('slider-r').value);
+            userRGB.g = parseInt(document.getElementById('slider-g').value);
+            userRGB.b = parseInt(document.getElementById('slider-b').value);
+
+            document.getElementById('val-r').innerText = userRGB.r;
+            document.getElementById('val-g').innerText = userRGB.g;
+            document.getElementById('val-b').innerText = userRGB.b;
+
+            const preview = document.getElementById('user-color-preview');
+            const hexText = document.getElementById('user-hex-code');
+            
+            const hex = rgbToHex(userRGB.r, userRGB.g, userRGB.b);
+            preview.style.backgroundColor = `rgb(${userRGB.r}, ${userRGB.g}, ${userRGB.b})`;
+            hexText.innerText = hex.toUpperCase();
+        }
+
+        function submitColorChoice() {
+            clearGlobalInterval();
+
+            // Cálculo da distância euclidiana de cor RGB (máx distância = sqrt(255^2 * 3) ≈ 441.67)
+            const maxDistance = Math.sqrt(3 * Math.pow(255, 2));
+            const distance = Math.sqrt(
+                Math.pow(targetRGB.r - userRGB.r, 2) +
+                Math.pow(targetRGB.g - userRGB.g, 2) +
+                Math.pow(targetRGB.b - userRGB.b, 2)
+            );
+
+            const accuracy = Math.max(0, Math.round((1 - (distance / maxDistance)) * 100));
+
+            // Configura tela de resultado
+            document.getElementById('result-target-box').style.backgroundColor = `rgb(${targetRGB.r}, ${targetRGB.g}, ${targetRGB.b})`;
+            document.getElementById('result-user-box').style.backgroundColor = `rgb(${userRGB.r}, ${userRGB.g}, ${userRGB.b})`;
+            
+            document.getElementById('result-target-hex').innerText = rgbToHex(targetRGB.r, targetRGB.g, targetRGB.b).toUpperCase();
+            document.getElementById('result-user-hex').innerText = rgbToHex(userRGB.r, userRGB.g, userRGB.b).toUpperCase();
+
+            document.getElementById('color-accuracy-score').innerText = `${accuracy}%`;
+
+            const title = document.getElementById('color-result-title');
+            const subtitle = document.getElementById('color-result-subtitle');
+            const badge = document.getElementById('color-score-badge');
+
+            if (accuracy >= 90) {
+                playSound('win');
+                badge.innerText = "🌟";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                title.innerText = "Visão Incrível!";
+                subtitle.innerText = "Sua memória de cor é impressionante.";
+            } else if (accuracy >= 70) {
+                playSound('win');
+                badge.innerText = "👍";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40";
+                title.innerText = "Muito Bom!";
+                subtitle.innerText = "Chegou bem perto da cor original.";
+            } else {
+                playSound('lose');
+                badge.innerText = "🎨";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-slate-800 text-slate-300 border border-slate-700";
+                title.innerText = "Treine Mais!";
+                subtitle.innerText = "Continue praticando para afiar sua percepção.";
+            }
+
+            showSubScreen('color', 'color-result');
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        // ==========================================
+        // JOGO 2: LÓGICA QUEBRA-CABEÇA 3X3 (9 Peças)
+        // ==========================================
+        const PUZZLE_IMAGES = [
+            'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=800&auto=format&fit=crop'
+        ];
+
+        let puzzleImageUrl = '';
+        let puzzlePieces = []; // Array de [0..8]
+        let puzzleSelectedIndex = null;
+        let puzzleHintActive = false;
+
+        // Touch Drag temporários
+        let touchStartIdx = null;
+        let touchActive = false;
+
+        function startPuzzleGame() {
+            initAudio();
+            clearGlobalInterval();
+            playSound('swap');
+
+            puzzleSelectedIndex = null;
+            puzzleHintActive = false;
+            document.getElementById('puzzle-hint-bg').style.opacity = '0';
+
+            // Escolhe imagem aleatória
+            puzzleImageUrl = PUZZLE_IMAGES[Math.floor(Math.random() * PUZZLE_IMAGES.length)];
+            document.getElementById('puzzle-preview-img').src = puzzleImageUrl;
+
+            showSubScreen('puzzle', 'puzzle-preview');
+
+            // Timer de Memorização (5s)
+            let duration = 5.0;
+            const timerEl = document.getElementById('puzzle-preview-timer');
+            const barEl = document.getElementById('puzzle-preview-bar');
+            
+            const startTime = Date.now();
+            let lastSec = 5;
+
+            activeInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const remaining = Math.max(0, duration - elapsed);
+
+                timerEl.innerText = remaining.toFixed(1);
+                barEl.style.width = `${(remaining / duration) * 100}%`;
+
+                if (Math.ceil(remaining) < lastSec && Math.ceil(remaining) > 0) {
+                    lastSec = Math.ceil(remaining);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearGlobalInterval();
+                    startPuzzleGameplayPhase();
+                }
+            }, 50);
+        }
+
+        function startPuzzleGameplayPhase() {
+            // Embaralhar 9 peças (3x3)
+            do {
+                puzzlePieces = Array.from({ length: 9 }, (_, i) => i).sort(() => Math.random() - 0.5);
+            } while (checkPuzzleWin());
+
+            document.getElementById('puzzle-hint-bg').style.backgroundImage = `url('${puzzleImageUrl}')`;
+
+            renderPuzzleBoard();
+            showSubScreen('puzzle', 'puzzle-gameplay');
+
+            // Timer de Montagem (20s)
+            let duration = 20.0;
+            const timerEl = document.getElementById('puzzle-gameplay-timer');
+            const startTime = Date.now();
+            let lastSec = 20;
+
+            activeInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                const remaining = Math.max(0, duration - elapsed);
+
+                timerEl.innerText = remaining.toFixed(1);
+
+                if (Math.ceil(remaining) < lastSec && Math.ceil(remaining) > 0) {
+                    lastSec = Math.ceil(remaining);
+                    playSound('tick');
+                }
+
+                if (remaining <= 0) {
+                    clearGlobalInterval();
+                    endPuzzleGame(remaining);
+                }
+            }, 50);
+        }
+
+        function renderPuzzleBoard() {
+            const board = document.getElementById('puzzle-board');
+            const hintBg = document.getElementById('puzzle-hint-bg');
+            
+            board.innerHTML = '';
+            board.appendChild(hintBg);
+
+            puzzlePieces.forEach((pieceId, slotIndex) => {
+                const slot = document.createElement('div');
+                slot.className = 'puzzle-slot';
+                slot.dataset.index = slotIndex;
+                slot.draggable = true;
+
+                // Colunas e Linhas para Grid 3x3
+                const col = pieceId % 3;
+                const row = Math.floor(pieceId / 3);
+
+                slot.style.backgroundImage = `url('${puzzleImageUrl}')`;
+                // Posições em porcentagem (0%, 50%, 100%)
+                const posX = (col / 2) * 100;
+                const posY = (row / 2) * 100;
+                slot.style.backgroundPosition = `${posX}% ${posY}%`;
+
+                if (puzzleSelectedIndex === slotIndex) {
+                    slot.classList.add('selected');
+                }
+
+                // Eventos de clique e Drag&Drop
+                slot.addEventListener('click', () => handlePuzzleClick(slotIndex));
+                slot.addEventListener('dragstart', (e) => handlePuzzleDragStart(e, slotIndex));
+                slot.addEventListener('dragover', (e) => handlePuzzleDragOver(e));
+                slot.addEventListener('dragleave', (e) => handlePuzzleDragLeave(e));
+                slot.addEventListener('drop', (e) => handlePuzzleDrop(e, slotIndex));
+
+                // Eventos Touch para celulares
+                slot.addEventListener('touchstart', (e) => handlePuzzleTouchStart(e, slotIndex), { passive: false });
+                slot.addEventListener('touchmove', handlePuzzleTouchMove, { passive: false });
+                slot.addEventListener('touchend', (e) => handlePuzzleTouchEnd(e, slotIndex));
+
+                board.appendChild(slot);
+            });
+        }
+
+        function togglePuzzleHint() {
+            puzzleHintActive = !puzzleHintActive;
+            document.getElementById('puzzle-hint-bg').style.opacity = puzzleHintActive ? '0.35' : '0';
+        }
+
+        function swapPuzzlePieces(idx1, idx2) {
+            if (idx1 === idx2 || idx1 === null || idx2 === null) return;
+
+            const temp = puzzlePieces[idx1];
+            puzzlePieces[idx1] = puzzlePieces[idx2];
+            puzzlePieces[idx2] = temp;
+
+            puzzleSelectedIndex = null;
+            playSound('swap');
+            renderPuzzleBoard();
+
+            if (checkPuzzleWin()) {
+                const timerEl = document.getElementById('puzzle-gameplay-timer');
+                const remaining = parseFloat(timerEl.innerText) || 0;
+                clearGlobalInterval();
+                setTimeout(() => endPuzzleGame(remaining), 150);
+            }
+        }
+
+        function handlePuzzleClick(index) {
+            if (puzzleSelectedIndex === null) {
+                puzzleSelectedIndex = index;
+                renderPuzzleBoard();
+            } else if (puzzleSelectedIndex === index) {
+                puzzleSelectedIndex = null;
+                renderPuzzleBoard();
+            } else {
+                swapPuzzlePieces(puzzleSelectedIndex, index);
+            }
+        }
+
+        // Drag & Drop Desktop
+        let draggedPuzzleIndex = null;
+
+        function handlePuzzleDragStart(e, index) {
+            draggedPuzzleIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            e.target.style.opacity = '0.5';
+        }
+
+        function handlePuzzleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handlePuzzleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handlePuzzleDrop(e, targetIndex) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            if (draggedPuzzleIndex !== null) {
+                swapPuzzlePieces(draggedPuzzleIndex, targetIndex);
+                draggedPuzzleIndex = null;
+            }
+        }
+
+        // Touch handlers (Mobile)
+        function handlePuzzleTouchStart(e, index) {
+            touchStartIdx = index;
+            touchActive = true;
+            const touch = e.touches[0];
+
+            const ghost = document.getElementById('touch-ghost');
+            const slot = e.currentTarget;
+
+            ghost.style.width = slot.offsetWidth + 'px';
+            ghost.style.height = slot.offsetHeight + 'px';
+            ghost.style.backgroundImage = slot.style.backgroundImage;
+            ghost.style.backgroundSize = slot.style.backgroundSize;
+            ghost.style.backgroundPosition = slot.style.backgroundPosition;
+            ghost.style.left = touch.clientX + 'px';
+            ghost.style.top = touch.clientY + 'px';
+            ghost.style.display = 'block';
+        }
+
+        function handlePuzzleTouchMove(e) {
+            if (!touchActive) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const ghost = document.getElementById('touch-ghost');
+            ghost.style.left = touch.clientX + 'px';
+            ghost.style.top = touch.clientY + 'px';
+        }
+
+        function handlePuzzleTouchEnd(e, index) {
+            if (!touchActive) return;
+            touchActive = false;
+
+            document.getElementById('touch-ghost').style.display = 'none';
+
+            const touch = e.changedTouches[0];
+            const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (targetEl && targetEl.closest('.puzzle-slot')) {
+                const targetSlot = targetEl.closest('.puzzle-slot');
+                const targetIdx = parseInt(targetSlot.dataset.index);
+                if (!isNaN(targetIdx)) {
+                    swapPuzzlePieces(touchStartIdx, targetIdx);
+                }
+            }
+            touchStartIdx = null;
+        }
+
+        function checkPuzzleWin() {
+            return puzzlePieces.every((pieceId, index) => pieceId === index);
+        }
+
+        function endPuzzleGame(remainingSeconds) {
+            let correct = 0;
+            puzzlePieces.forEach((pieceId, index) => {
+                if (pieceId === index) correct++;
+            });
+
+            const isWin = correct === 9;
+            const timeBonus = Math.round(remainingSeconds * 50);
+            const score = (correct * 150) + (isWin ? timeBonus : 0);
+
+            if (isWin) {
+                playSound('win');
+            } else {
+                playSound('lose');
+            }
+
+            document.getElementById('puzzle-correct-count').innerText = correct;
+            document.getElementById('puzzle-final-score').innerText = score;
+            document.getElementById('puzzle-result-img').src = puzzleImageUrl;
+
+            const badge = document.getElementById('puzzle-result-badge');
+            const title = document.getElementById('puzzle-result-title');
+            const subtitle = document.getElementById('puzzle-result-subtitle');
+
+            if (isWin) {
+                badge.innerText = "🏆";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
+                title.innerText = "Perfeito!";
+                subtitle.innerText = `Você montou tudo a tempo com ${remainingSeconds.toFixed(1)}s restantes!`;
+            } else if (correct >= 6) {
+                badge.innerText = "⚡";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-amber-500/20 text-amber-300 border border-amber-500/40";
+                title.innerText = "Muito Perto!";
+                subtitle.innerText = "O tempo acabou, mas você posicionou a maioria das peças.";
+            } else {
+                badge.innerText = "🧩";
+                badge.className = "w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center text-3xl shadow-lg bg-slate-800 text-slate-300 border border-slate-700";
+                title.innerText = "Tempo Esgotado!";
+                subtitle.innerText = "Pratique para aumentar sua velocidade de montagem.";
+            }
+
+            showSubScreen('puzzle', 'puzzle-result');
+        }
+    </script>
+</body>
+</html>
